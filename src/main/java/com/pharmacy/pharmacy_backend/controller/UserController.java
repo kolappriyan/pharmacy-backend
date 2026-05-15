@@ -2,6 +2,7 @@ package com.pharmacy.pharmacy_backend.controller;
 
 import com.pharmacy.pharmacy_backend.model.User;
 import com.pharmacy.pharmacy_backend.repository.UserRepository;
+import com.pharmacy.pharmacy_backend.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,6 +15,9 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @PostMapping("/register")
     public Map<String, String> register(@RequestBody User user) {
@@ -43,6 +47,13 @@ public class UserController {
             return Map.of("message", "Invalid credentials!");
         }
 
-        return Map.of("message", "Login successful!", "role", user.getRole(), "name", user.getFullName());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+
+        return Map.of(
+            "message", "Login successful!",
+            "token", token,
+            "role", user.getRole(),
+            "name", user.getFullName()
+        );
     }
 }
