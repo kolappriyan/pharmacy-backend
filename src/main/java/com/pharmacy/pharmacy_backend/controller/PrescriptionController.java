@@ -53,10 +53,21 @@ public class PrescriptionController {
         return prescriptionRepository.save(prescription);
     }
     @GetMapping("/file/{fileName}")
-    public ResponseEntity<Resource> getFile(@PathVariable String fileName) 
-        throws MalformedURLException {
+public ResponseEntity<Resource> getFile(@PathVariable String fileName) 
+    throws MalformedURLException {
+    
     Path filePath = uploadDir.resolve(fileName);
+    
+    // File இல்லன்னா 404 return பண்ணும்
+    if (!Files.exists(filePath)) {
+        return ResponseEntity.notFound().build();
+    }
+    
     Resource resource = new UrlResource(filePath.toUri());
+    
+    if (!resource.exists() || !resource.isReadable()) {
+        return ResponseEntity.notFound().build();
+    }
 
     String contentType = "application/octet-stream";
     if (fileName.endsWith(".pdf")) {
@@ -72,7 +83,7 @@ public class PrescriptionController {
             .header(HttpHeaders.CONTENT_DISPOSITION, 
                     "inline; filename=\"" + fileName + "\"")
             .body(resource);
-   }
+}
 
     // ✅ Get all prescriptions
     @GetMapping
