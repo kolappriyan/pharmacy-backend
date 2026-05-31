@@ -14,8 +14,13 @@ public class Prescription {
     private String customerName;
     private String customerEmail;
     private String fileName;
-    private String status; // PENDING, VERIFIED, REJECTED
+    private String status;
     private LocalDateTime uploadedAt;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String fileData; // Base64 data
+
+    private String fileType; // image/jpeg, application/pdf etc
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -34,4 +39,10 @@ public class Prescription {
 
     public LocalDateTime getUploadedAt() { return uploadedAt; }
     public void setUploadedAt(LocalDateTime uploadedAt) { this.uploadedAt = uploadedAt; }
+
+    public String getFileData() { return fileData; }
+    public void setFileData(String fileData) { this.fileData = fileData; }
+
+    public String getFileType() { return fileType; }
+    public void setFileType(String fileType) { this.fileType = fileType; }
 }

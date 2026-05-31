@@ -3,17 +3,14 @@ package com.pharmacy.pharmacy_backend.controller;
 import com.pharmacy.pharmacy_backend.model.Prescription;
 import com.pharmacy.pharmacy_backend.repository.PrescriptionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
-import java.nio.file.*;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 
 @RestController
@@ -24,66 +21,53 @@ public class PrescriptionController {
     @Autowired
     private PrescriptionRepository prescriptionRepository;
 
-    // Upload folder path
-    private final Path uploadDir = Paths.get("uploads");
-
-    // ✅ Upload prescription — file disk-ல save ஆகும்
+    // ✅ Upload prescription — Base64-ஆ database-ல save
     @PostMapping("/upload")
     public Prescription uploadPrescription(
             @RequestParam("file") MultipartFile file,
             @RequestParam("customerName") String customerName,
             @RequestParam("customerEmail") String customerEmail) throws IOException {
 
-        // uploads folder இல்லன்னா create பண்ணும்
-        Files.createDirectories(uploadDir);
-
-        // File save பண்ணும்
+        // File-ஐ Base64-ஆ convert பண்ணும்
+        String base64Data = Base64.getEncoder().encodeToString(file.getBytes());
+        String fileType = file.getContentType();
         String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-        Path filePath = uploadDir.resolve(fileName);
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
         // Database-ல save பண்ணும்
         Prescription prescription = new Prescription();
         prescription.setCustomerName(customerName);
         prescription.setCustomerEmail(customerEmail);
         prescription.setFileName(fileName);
+        prescription.setFileData(base64Data);
+        prescription.setFileType(fileType);
         prescription.setStatus("PENDING");
         prescription.setUploadedAt(LocalDateTime.now());
 
         return prescriptionRepository.save(prescription);
     }
+
+    // ✅ Get file from database
     @GetMapping("/file/{fileName}")
-public ResponseEntity<Resource> getFile(@PathVariable String fileName) 
-    throws MalformedURLException {
-    
-    Path filePath = uploadDir.resolve(fileName);
-    
-    // File இல்லன்னா 404 return பண்ணும்
-    if (!Files.exists(filePath)) {
-        return ResponseEntity.notFound().build();
-    }
-    
-    Resource resource = new UrlResource(filePath.toUri());
-    
-    if (!resource.exists() || !resource.isReadable()) {
-        return ResponseEntity.notFound().build();
-    }
+    public ResponseEntity<byte[]> getFile(@PathVariable String fileName) {
 
-    String contentType = "application/octet-stream";
-    if (fileName.endsWith(".pdf")) {
-        contentType = "application/pdf";
-    } else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
-        contentType = "image/jpeg";
-    } else if (fileName.endsWith(".png")) {
-        contentType = "image/png";
-    }
+        Prescription prescription = prescriptionRepository.findByFileName(fileName);
 
-    return ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_TYPE, contentType)
-            .header(HttpHeaders.CONTENT_DISPOSITION, 
-                    "inline; filename=\"" + fileName + "\"")
-            .body(resource);
-}
+        if (prescription == null || prescription.getFileData() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        byte[] fileBytes = Base64.getDecoder().decode(prescription.getFileData());
+
+        String contentType = prescription.getFileType() != null
+                ? prescription.getFileType()
+                : "application/octet-stream";
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + fileName + "\"")
+                .body(fileBytes);
+    }
 
     // ✅ Get all prescriptions
     @GetMapping
