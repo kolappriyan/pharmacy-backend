@@ -29,4 +29,14 @@ public class MedicineController {
     public void deleteMedicine(@PathVariable Long id) {
         medicineRepository.deleteById(id);
     }
+
+    // Stock reduce endpoint
+    @PutMapping("/{id}/reduce-stock")
+    public Medicine reduceStock(@PathVariable Long id, @RequestParam int quantity) {
+        Medicine medicine = medicineRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Medicine not found"));
+        int newStock = medicine.getStock() - quantity;
+        medicine.setStock(Math.max(newStock, 0));
+        return medicineRepository.save(medicine);
+    }
 }
